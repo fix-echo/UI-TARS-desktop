@@ -6,7 +6,8 @@ import { BrowserWindow, Menu, MenuItemConstructorOptions, app } from 'electron';
 
 import { isDev } from '@main/env';
 
-import { exportLogs } from './logger';
+import { exportLogs, revealLogDir, clearLogs } from './logger';
+import type { AppUpdater } from '@main/utils/updateApp';
 
 interface DarwinMenuItemConstructorOptions extends MenuItemConstructorOptions {
   selector?: string;
@@ -15,9 +16,11 @@ interface DarwinMenuItemConstructorOptions extends MenuItemConstructorOptions {
 
 export default class MenuBuilder {
   browserWindow: BrowserWindow;
+  appUpdater: AppUpdater;
 
-  constructor(browserWindow: BrowserWindow) {
+  constructor(browserWindow: BrowserWindow, appUpdater: AppUpdater) {
     this.browserWindow = browserWindow;
+    this.appUpdater = appUpdater;
   }
 
   buildMenu(): Menu {
@@ -159,13 +162,38 @@ export default class MenuBuilder {
       label: 'Help',
       submenu: [
         {
-          label: 'Open Log File',
-          click: async () => {
-            await exportLogs();
+          label: 'Check for Updates',
+          click: () => {
+            this.appUpdater.checkForUpdates();
           },
         },
+        { type: 'separator' },
         {
-          label: 'Toggle &Developer Tools',
+          label: 'Logs',
+          submenu: [
+            {
+              label: 'Export Current Log',
+              click: async () => {
+                await exportLogs();
+              },
+            },
+            {
+              label: 'Open Log Directory',
+              click: async () => {
+                await revealLogDir();
+              },
+            },
+            {
+              label: 'Clear Logs',
+              click: () => {
+                clearLogs();
+              },
+            },
+          ],
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Developer Tools',
           click: () => {
             this.browserWindow.webContents.toggleDevTools();
           },
@@ -233,10 +261,33 @@ export default class MenuBuilder {
         label: 'Help',
         submenu: [
           {
-            label: 'Open Log File',
-            click: async () => {
-              await exportLogs();
+            label: 'Check for Updates',
+            click: () => {
+              this.appUpdater.checkForUpdates();
             },
+          },
+          {
+            label: 'Logs',
+            submenu: [
+              {
+                label: 'Export Current Log',
+                click: async () => {
+                  await exportLogs();
+                },
+              },
+              {
+                label: 'Open Log Directory',
+                click: async () => {
+                  await revealLogDir();
+                },
+              },
+              {
+                label: 'Clear Logs',
+                click: () => {
+                  clearLogs();
+                },
+              },
+            ],
           },
           {
             label: 'Toggle &Developer Tools',

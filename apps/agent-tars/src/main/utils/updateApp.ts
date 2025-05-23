@@ -8,27 +8,39 @@ import {
 
 export class AppUpdater {
   autoUpdater: ElectronAppUpdater = autoUpdater;
+
+  checkReleaseName(releaseName: string | undefined | null): boolean {
+    return Boolean(
+      releaseName && /agent[-.\s]?tars/i.test(releaseName.toLowerCase()),
+    );
+  }
+
   constructor(mainWindow: BrowserWindow) {
-    if (app.isPackaged) {
-      autoUpdater.logger = logger;
-      autoUpdater.autoDownload = true;
+    autoUpdater.logger = logger;
+    autoUpdater.autoDownload = false;
 
-      autoUpdater.on('error', (error) => {
-        logger.error('Update_Error', error);
-        mainWindow.webContents.send('main:error', error);
-      });
+    autoUpdater.on('error', (error) => {
+      logger.error('Update_Error', error);
+      mainWindow.webContents.send('main:error', error);
+    });
 
-      autoUpdater.on('update-available', (releaseInfo: UpdateInfo) => {
-        logger.info('new version', releaseInfo);
+    autoUpdater.on('update-available', (releaseInfo: UpdateInfo) => {
+      logger.info('new version', releaseInfo);
+      const appName = releaseInfo?.files?.[0]?.url;
+
+      if (this.checkReleaseName(appName)) {
         mainWindow.webContents.send('app-update-available', releaseInfo);
-      });
-
-      this.autoUpdater = autoUpdater;
-
-      if (app.isPackaged) {
-        // Only check for updates in the packaged version!
-        this.autoUpdater.checkForUpdatesAndNotify();
+        autoUpdater.downloadUpdate();
+      } else {
+        logger.info('Cannot match');
       }
+    });
+
+    this.autoUpdater = autoUpdater;
+
+    if (app.isPackaged) {
+      // Only check for updates in the packaged version!
+      this.autoUpdater.checkForUpdatesAndNotify();
     }
   }
 
@@ -54,12 +66,16 @@ export class AppUpdater {
     // Listen for available updates
     autoUpdater.on('update-available', (info) => {
       logger.info(`New version found: ${info.version}`);
-      dialog.showMessageBox({
-        type: 'info',
-        title: 'Update Available',
-        message: `New version ${info.version} available, downloading...`,
-      });
-      // If autoDownload is true, the update will download automatically; otherwise, need to call autoUpdater.downloadUpdate() manually
+      if (this.checkReleaseName(info?.releaseName)) {
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'Update Available',
+          message: `New version ${info.version} available, downloading...`,
+        });
+        autoUpdater.downloadUpdate();
+      } else {
+        logger.info('Cannot match');
+      }
     });
 
     // Listen for download progress (optional)
